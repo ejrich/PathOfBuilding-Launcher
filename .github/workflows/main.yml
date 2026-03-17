@@ -18,3 +18,27 @@ jobs:
         with:
             name: Path of Building${{ matrix.version }}.exe
             path: '${{ github.workspace }}/x64/Release${{ matrix.version }}/Path of Building${{ matrix.version }}.exe'
+
+  build_linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        uses: threeal/cmake-action@v1.3.0
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Archive PoB
+        uses: actions/upload-artifact@v4
+        with:
+          name: PathOfBuilding
+          path: "Path of Building"
+
+      - name: Archive PoB2
+        uses: actions/upload-artifact@v4
+        with:
+          name: PathOfBuilding-PoE2
+          path: "Path of Building-PoE2"
