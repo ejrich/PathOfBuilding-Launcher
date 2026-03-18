@@ -1,10 +1,11 @@
 #include <cstdint>
+#include <cstring>
 #include <vector>
 #include <string>
 #include <sstream>
 #include "StringUtils.h"
 
-#ifdef WIN32
+#ifdef _WIN32
     #include <windows.h>
     #include <ShlObj.h>
     #include "SafeHandle.h"
@@ -19,7 +20,7 @@
 // so it's disabled for now.
 constexpr auto USE_SHORT_PATHS = false;
 
-#ifdef WIN32
+#ifdef _WIN32
 std::vector<std::wstring> ParseCommandLine()
 {
     std::vector<std::wstring> commandLine;
@@ -56,7 +57,7 @@ std::vector<std::wstring> ParseCommandLine(int argc, char** argv)
 
 bool ReadHeaderFromFile(const std::wstring &path, char* szHeader, int headerSize)
 {
-#ifdef WIN32
+#ifdef _WIN32
     // Open the file (SafeHandle will close the file when exiting scope).
     SafeHandle hFile = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (!hFile.IsValid())
@@ -133,7 +134,7 @@ bool IsValidLuaFile(const std::wstring &path, std::string &firstLine)
 
 bool InsertPath(std::vector<std::wstring> &commandLine, const std::wstring &path)
 {
-#ifdef WIN32
+#ifdef _WIN32
     if constexpr (USE_SHORT_PATHS)
     {
         DWORD requiredLength = GetShortPathName(path.c_str(), nullptr, 0);
@@ -226,7 +227,7 @@ bool InsertLaunchLua(std::vector<std::wstring> &commandLine, std::string &firstL
         // Convert the path of the file to the long version
         if (commandLine[1].size() > 3 && iswupper(commandLine[1][0]) && commandLine[1][1] == ':' && commandLine[1][2] == '\\')
         {
-#ifdef WIN32
+#ifdef _WIN32
             wchar_t wszLongPath[MAX_PATH]{};
             if (GetLongPathName(commandLine[1].c_str(), wszLongPath, MAX_PATH) != 0)
             {
@@ -241,7 +242,7 @@ bool InsertLaunchLua(std::vector<std::wstring> &commandLine, std::string &firstL
 
     // Look in the same directory as the executable
     {
-#ifdef WIN32
+#ifdef _WIN32
         wchar_t wszModuleFilename[MAX_PATH]{};
         if (GetModuleFileName(nullptr, wszModuleFilename, MAX_PATH) > 0)
         {
@@ -260,7 +261,7 @@ bool InsertLaunchLua(std::vector<std::wstring> &commandLine, std::string &firstL
 #endif
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     // Check for the registry key left by the installer
     // HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Path of Building Community[ (PoE2)]\InstallLocation
     {
@@ -343,7 +344,7 @@ std::vector<std::string> ConvertToUTF8(std::vector<std::wstring> commandLine)
         commandLineUTF8.reserve(commandLine.size());
         for (const std::wstring &param : commandLine)
         {
-#ifdef WIN32
+#ifdef _WIN32
             int dwUTF8Size = WideCharToMultiByte(CP_UTF8, 0, param.c_str(), (int)param.size(), NULL, 0, NULL, NULL);
             std::string paramUTF8(dwUTF8Size, 0);
             WideCharToMultiByte(CP_UTF8, 0, param.c_str(), (int)param.size(), paramUTF8.data(), dwUTF8Size, NULL, NULL);
@@ -366,7 +367,7 @@ void InitConsole()
         return;
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     AllocConsole();
     FILE *fDummy = nullptr;
     freopen_s(&fDummy, "CONIN$", "r", stdin);
@@ -377,14 +378,14 @@ void InitConsole()
 }
 
 // Entry function
-#ifdef WIN32
+#ifdef _WIN32
 int CALLBACK wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR lpCmdLine, _In_ int nCmdShow)
 #else
 int main(int argc, char** argv)
 #endif
 {
     // Store all the commandline parameters into a vector for easy manipulation
-    #if WIN32
+    #if _WIN32
     std::vector<std::wstring> commandLine = ParseCommandLine();
     #else
     std::vector<std::wstring> commandLine = ParseCommandLine(argc, argv);
@@ -408,7 +409,7 @@ int main(int argc, char** argv)
     }
 
     if (isDevScript(commandLine[1])) {
-#ifdef WIN32
+#ifdef _WIN32
         LoadLibrary(L"lua51.dll");
 #else
         // TODO Load lua for linux
@@ -416,7 +417,7 @@ int main(int argc, char** argv)
     }
 
     // Load the DLL
-#ifdef WIN32
+#ifdef _WIN32
     HMODULE hDLL = LoadLibrary(dllName.c_str());
 #else
     // TODO Load shared object for linux
@@ -433,14 +434,14 @@ int main(int argc, char** argv)
 
     // Look for a valid entry point to the dll
     typedef int (*PFNRUNLUAFILEPROC)(int, char **);
-#ifdef WIN32
+#ifdef _WIN32
     PFNRUNLUAFILEPROC RunLuaFile = (PFNRUNLUAFILEPROC)GetProcAddress(hDLL, "RunLuaFileAsWin");
 #else
     PFNRUNLUAFILEPROC RunLuaFile = (PFNRUNLUAFILEPROC)dlsym(hDLL, "RunLuaFileAsWin");
 #endif
     if (!RunLuaFile) {
         InitConsole();
-#ifdef WIN32
+#ifdef _WIN32
         SetConsoleTitle(commandLine[1].c_str());
         RunLuaFile = (PFNRUNLUAFILEPROC)GetProcAddress(hDLL, "RunLuaFileAsConsole");
 #else
@@ -449,7 +450,7 @@ int main(int argc, char** argv)
     }
     if (!RunLuaFile) {
         wprintf(L"ERROR: DLL '%s' does not appear to be a Path of Building dll.\n", dllName.c_str());
-#ifdef WIN32
+#ifdef _WIN32
         FreeLibrary(hDLL);
 #else
         dlclose(hDLL);
@@ -487,7 +488,7 @@ int main(int argc, char** argv)
     int dwStatus = RunLuaFile((int)dwNumParams, ppParamList.get());
 
     // Cleanup the DLL
-#ifdef WIN32
+#ifdef _WIN32
     FreeLibrary(hDLL);
 #else
     dlclose(hDLL);
