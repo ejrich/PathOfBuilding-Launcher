@@ -14,3 +14,4 @@ set_target_properties(PathOfBuilding PROPERTIES OUTPUT_NAME "Path of Building")
 
 add_executable(PathOfBuilding-PoE2 ${LAUNCHER_SOURCES})
 set_target_properties(PathOfBuilding-PoE2 PROPERTIES OUTPUT_NAME "Path of Building-PoE2")
+target_compile_definitions(PathOfBuilding-PoE2 PRIVATE GAMEVERSION_2=1)
