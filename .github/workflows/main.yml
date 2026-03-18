@@ -35,10 +35,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: PathOfBuilding
-          path: "Path of Building"
+          path: "build/Path of Building"
 
       - name: Archive PoB2
         uses: actions/upload-artifact@v4
         with:
           name: PathOfBuilding-PoE2
-          path: "Path of Building-PoE2"
+          path: "build/Path of Building-PoE2"
