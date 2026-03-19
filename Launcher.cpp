@@ -467,8 +467,10 @@ int main(int argc, char** argv)
     if (hDLL == nullptr)
     {
         InitConsole();
-        wprintf(L"ERROR: Could not find dll named '%s'\n", dllName.c_str());
+        wprintf(L"ERROR: Could not find dll named '%ls'\n", dllName.c_str());
+#ifdef _WIN32
         system("pause");
+#endif
         return 1;
     }
 
@@ -489,7 +491,7 @@ int main(int argc, char** argv)
 #endif
     }
     if (!RunLuaFile) {
-        wprintf(L"ERROR: DLL '%s' does not appear to be a Path of Building dll.\n", dllName.c_str());
+        wprintf(L"ERROR: DLL '%ls' does not appear to be a Path of Building dll.\n", dllName.c_str());
 #ifdef _WIN32
         FreeLibrary(hDLL);
 #else
