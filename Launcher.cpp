@@ -55,6 +55,21 @@ std::vector<std::wstring> ParseCommandLine(int argc, char** argv)
 }
 #endif
 
+std::string ConvertToUTF8(std::wstring param)
+{
+#ifdef _WIN32
+    int dwUTF8Size = WideCharToMultiByte(CP_UTF8, 0, param.c_str(), (int)param.size(), NULL, 0, NULL, NULL);
+    std::string value(dwUTF8Size, 0);
+    WideCharToMultiByte(CP_UTF8, 0, param.c_str(), (int)param.size(), value.data(), dwUTF8Size, NULL, NULL);
+#else
+    int dwUTF8Size = std::wcstombs(nullptr, param.c_str(), 0);
+    std::string value(dwUTF8Size, 0);
+    std::wcstombs(value.data(), param.c_str(), dwUTF8Size);
+#endif
+
+    return value;
+}
+
 bool ReadHeaderFromFile(const std::wstring &path, char* szHeader, int headerSize)
 {
 #ifdef _WIN32
@@ -73,11 +88,9 @@ bool ReadHeaderFromFile(const std::wstring &path, char* szHeader, int headerSize
     szHeader[dwBytesRead] = 0;
     hFile.Close();
 #else
-    auto pathLength = std::wcstombs(nullptr, path.c_str(), 0) + 1;
-    char pathBuffer[pathLength]{};
-    std::wcstombs(pathBuffer, path.c_str(), pathLength);
+    std::string pathString = ConvertToUTF8(path);
 
-    std::ifstream file(pathBuffer);
+    std::ifstream file(pathString.c_str());
     if (!file.is_open())
     {
         return false;
@@ -344,15 +357,7 @@ std::vector<std::string> ConvertToUTF8(std::vector<std::wstring> commandLine)
         commandLineUTF8.reserve(commandLine.size());
         for (const std::wstring &param : commandLine)
         {
-#ifdef _WIN32
-            int dwUTF8Size = WideCharToMultiByte(CP_UTF8, 0, param.c_str(), (int)param.size(), NULL, 0, NULL, NULL);
-            std::string paramUTF8(dwUTF8Size, 0);
-            WideCharToMultiByte(CP_UTF8, 0, param.c_str(), (int)param.size(), paramUTF8.data(), dwUTF8Size, NULL, NULL);
-#else
-            int dwUTF8Size = std::wcstombs(nullptr, param.c_str(), 0);
-            std::string paramUTF8(dwUTF8Size, 0);
-            std::wcstombs(paramUTF8.data(), param.c_str(), dwUTF8Size);
-#endif
+            std::string paramUTF8 = ConvertToUTF8(param);
             commandLineUTF8.emplace_back(std::move(paramUTF8));
         }
     }
@@ -403,16 +408,23 @@ int main(int argc, char** argv)
     // Determine the DLL to load
     std::wstring dllName(firstLine.begin() + 2, firstLine.end());
     trim(dllName);
+#ifdef _WIN32
     if (wcsstr(dllName.c_str(), L".dll") == nullptr)
     {
         dllName += L".dll";
     }
+#else
+    if (wcsstr(dllName.c_str(), L".so") == nullptr)
+    {
+        dllName += L".so";
+    }
+#endif
 
     if (isDevScript(commandLine[1])) {
 #ifdef _WIN32
         LoadLibrary(L"lua51.dll");
 #else
-        // TODO Load lua for linux
+        dlopen("libluajit-5.1.so", 0);
 #endif
     }
 
@@ -420,9 +432,8 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     HMODULE hDLL = LoadLibrary(dllName.c_str());
 #else
-    // TODO Load shared object for linux
-    // void* hDLL = dlopen(dllName.c_str(), 0);
-    void* hDLL = nullptr;
+    std::string dllNameString = ConvertToUTF8(dllName);
+    void* hDLL = dlopen(dllNameString.c_str(), 0);
 #endif
     if (hDLL == nullptr)
     {
