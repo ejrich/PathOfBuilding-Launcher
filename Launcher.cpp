@@ -13,6 +13,7 @@
     #include <dlfcn.h>
     #include <fstream>
     #include <memory>
+    #include <unistd.h>
 #endif
 
 // Enable if the launcher should convert the path of the launch.lua to a "short" windows path.
@@ -89,6 +90,13 @@ bool ReadHeaderFromFile(const std::wstring &path, char* szHeader, int headerSize
     hFile.Close();
 #else
     std::string pathString = ConvertToUTF8(path);
+    for (size_t i = 0; i < pathString.length(); i++)
+    {
+        if (pathString[i] == '\\')
+        {
+            pathString[i] = '/';
+        }
+    }
 
     std::ifstream file(pathString.c_str());
     if (!file.is_open())
@@ -145,7 +153,7 @@ bool IsValidLuaFile(const std::wstring &path, std::string &firstLine)
     return true;
 }
 
-bool InsertPath(std::vector<std::wstring> &commandLine, const std::wstring &path)
+bool InsertPath(std::vector<std::wstring> &commandLine, std::wstring &path)
 {
 #ifdef _WIN32
     if constexpr (USE_SHORT_PATHS)
@@ -168,6 +176,15 @@ bool InsertPath(std::vector<std::wstring> &commandLine, const std::wstring &path
     else
 #endif
     {
+#ifndef _WIN32
+        for (size_t i = 0; i < path.length(); i++)
+        {
+            if (path[i] == L'\\')
+            {
+                path[i] = L'/';
+            }
+        }
+#endif
         commandLine.insert(commandLine.begin() + 1, path);
     }
     return true;
@@ -270,7 +287,19 @@ bool InsertLaunchLua(std::vector<std::wstring> &commandLine, std::string &firstL
             }
         }
 #else
-        // TODO Implement this for linux
+        char executablePath[4096]{};
+        if (readlink("/proc/self/exe", executablePath, 4095))
+        {
+            char *szLastSlash = strrchr(executablePath, '/');
+            if (szLastSlash != nullptr)
+            {
+                std::wstring basePath(executablePath, szLastSlash + 1);
+                if (FindLaunchLua(basePath, commandLine, firstLine))
+                {
+                    return true;
+                }
+            }
+        }
 #endif
     }
 
