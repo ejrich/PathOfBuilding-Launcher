@@ -24,19 +24,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Configure CMake
         uses: threeal/cmake-action@v1.3.0
-
       - name: Build
         run: cmake --build build
-
       - name: Archive PoB
         uses: actions/upload-artifact@v4
         with:
           name: PathOfBuilding
           path: "build/Path of Building"
-
       - name: Archive PoB2
         uses: actions/upload-artifact@v4
         with:

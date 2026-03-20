@@ -9,7 +9,7 @@
     #include <windows.h>
     #include <ShlObj.h>
     #include "SafeHandle.h"
-#else
+#elif __linux__
     #include <dlfcn.h>
     #include <fstream>
     #include <memory>
@@ -38,7 +38,7 @@ std::vector<std::wstring> ParseCommandLine()
     }
     return commandLine;
 }
-#else
+#elif __linux__
 std::vector<std::wstring> ParseCommandLine(int argc, char** argv)
 {
     std::vector<std::wstring> commandLine;
@@ -62,7 +62,7 @@ std::string ConvertToUTF8(std::wstring param)
     int dwUTF8Size = WideCharToMultiByte(CP_UTF8, 0, param.c_str(), (int)param.size(), NULL, 0, NULL, NULL);
     std::string value(dwUTF8Size, 0);
     WideCharToMultiByte(CP_UTF8, 0, param.c_str(), (int)param.size(), value.data(), dwUTF8Size, NULL, NULL);
-#else
+#elif __linux__
     int dwUTF8Size = std::wcstombs(nullptr, param.c_str(), 0);
     std::string value(dwUTF8Size, 0);
     std::wcstombs(value.data(), param.c_str(), dwUTF8Size);
@@ -88,7 +88,7 @@ bool ReadHeaderFromFile(const std::wstring &path, char* szHeader, int headerSize
     }
     szHeader[dwBytesRead] = 0;
     hFile.Close();
-#else
+#elif __linux__
     std::string pathString = ConvertToUTF8(path);
     for (size_t i = 0; i < pathString.length(); i++)
     {
@@ -286,7 +286,7 @@ bool InsertLaunchLua(std::vector<std::wstring> &commandLine, std::string &firstL
                 }
             }
         }
-#else
+#elif __linux__
         char executablePath[4096]{};
         if (readlink("/proc/self/exe", executablePath, 4095))
         {
@@ -414,14 +414,14 @@ void InitConsole()
 // Entry function
 #ifdef _WIN32
 int CALLBACK wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR lpCmdLine, _In_ int nCmdShow)
-#else
+#elif __linux__
 int main(int argc, char** argv)
 #endif
 {
     // Store all the commandline parameters into a vector for easy manipulation
     #if _WIN32
     std::vector<std::wstring> commandLine = ParseCommandLine();
-    #else
+    #elif __linux__
     std::vector<std::wstring> commandLine = ParseCommandLine(argc, argv);
     #endif
 
@@ -442,7 +442,7 @@ int main(int argc, char** argv)
     {
         dllName += L".dll";
     }
-#else
+#elif __linux__
     if (wcsstr(dllName.c_str(), L".so") == nullptr)
     {
         dllName += L".so";
@@ -452,7 +452,7 @@ int main(int argc, char** argv)
     if (isDevScript(commandLine[1])) {
 #ifdef _WIN32
         LoadLibrary(L"lua51.dll");
-#else
+#elif __linux__
         dlopen("libluajit-5.1.so", 0);
 #endif
     }
@@ -460,7 +460,7 @@ int main(int argc, char** argv)
     // Load the DLL
 #ifdef _WIN32
     HMODULE hDLL = LoadLibrary(dllName.c_str());
-#else
+#elif __linux__
     std::string dllNameString = ConvertToUTF8(dllName);
     void* hDLL = dlopen(dllNameString.c_str(), 0);
 #endif
@@ -478,7 +478,7 @@ int main(int argc, char** argv)
     typedef int (*PFNRUNLUAFILEPROC)(int, char **);
 #ifdef _WIN32
     PFNRUNLUAFILEPROC RunLuaFile = (PFNRUNLUAFILEPROC)GetProcAddress(hDLL, "RunLuaFileAsWin");
-#else
+#elif __linux__
     PFNRUNLUAFILEPROC RunLuaFile = (PFNRUNLUAFILEPROC)dlsym(hDLL, "RunLuaFileAsWin");
 #endif
     if (!RunLuaFile) {
@@ -486,7 +486,7 @@ int main(int argc, char** argv)
 #ifdef _WIN32
         SetConsoleTitle(commandLine[1].c_str());
         RunLuaFile = (PFNRUNLUAFILEPROC)GetProcAddress(hDLL, "RunLuaFileAsConsole");
-#else
+#elif __linux__
         RunLuaFile = (PFNRUNLUAFILEPROC)dlsym(hDLL, "RunLuaFileAsConsole");
 #endif
     }
@@ -494,7 +494,7 @@ int main(int argc, char** argv)
         wprintf(L"ERROR: DLL '%ls' does not appear to be a Path of Building dll.\n", dllName.c_str());
 #ifdef _WIN32
         FreeLibrary(hDLL);
-#else
+#elif __linux
         dlclose(hDLL);
 #endif
         return 1;
@@ -532,7 +532,7 @@ int main(int argc, char** argv)
     // Cleanup the DLL
 #ifdef _WIN32
     FreeLibrary(hDLL);
-#else
+#elif __linux__
     dlclose(hDLL);
 #endif
 
