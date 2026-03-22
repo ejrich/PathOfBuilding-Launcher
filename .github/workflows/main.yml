@@ -26,6 +26,8 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure CMake
         uses: threeal/cmake-action@v1.3.0
+        with:
+            options: CMAKE_BUILD_TYPE=Release
       - name: Build
         run: cmake --build build
       - name: Archive PoB
