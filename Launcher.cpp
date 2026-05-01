@@ -445,7 +445,7 @@ int main(int argc, char** argv)
 #elif __linux__
     if (wcsstr(dllName.c_str(), L".so") == nullptr)
     {
-        dllName += L".so";
+        dllName = L"./lib" + dllName + L".so";
     }
 #endif
 
@@ -453,7 +453,7 @@ int main(int argc, char** argv)
 #ifdef _WIN32
         LoadLibrary(L"lua51.dll");
 #elif __linux__
-        dlopen("libluajit-5.1.so", 0);
+        dlopen("libluajit-5.1.so", RTLD_LAZY);
 #endif
     }
 
@@ -462,7 +462,7 @@ int main(int argc, char** argv)
     HMODULE hDLL = LoadLibrary(dllName.c_str());
 #elif __linux__
     std::string dllNameString = ConvertToUTF8(dllName);
-    void* hDLL = dlopen(dllNameString.c_str(), 0);
+    void* hDLL = dlopen(dllNameString.c_str(), RTLD_LAZY);
 #endif
     if (hDLL == nullptr)
     {
