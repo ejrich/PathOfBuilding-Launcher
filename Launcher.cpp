@@ -12,6 +12,7 @@
 #elif __linux__
     #include <dlfcn.h>
     #include <fstream>
+    #include <limits.h>
     #include <memory>
     #include <unistd.h>
 #endif
@@ -287,8 +288,8 @@ bool InsertLaunchLua(std::vector<std::wstring> &commandLine, std::string &firstL
             }
         }
 #elif __linux__
-        char executablePath[4096]{};
-        if (readlink("/proc/self/exe", executablePath, 4095))
+        char executablePath[PATH_MAX]{};
+        if (readlink("/proc/self/exe", executablePath, PATH_MAX - 1))
         {
             char *szLastSlash = strrchr(executablePath, '/');
             if (szLastSlash != nullptr)
@@ -494,7 +495,7 @@ int main(int argc, char** argv)
         wprintf(L"ERROR: DLL '%ls' does not appear to be a Path of Building dll.\n", dllName.c_str());
 #ifdef _WIN32
         FreeLibrary(hDLL);
-#elif __linux
+#elif __linux__
         dlclose(hDLL);
 #endif
         return 1;
@@ -525,6 +526,24 @@ int main(int argc, char** argv)
         memcpy(pCurParamBufLoc, param.c_str(), param.size() + 1);
         pCurParamBufLoc += param.size() + 1;
     }
+
+#if __linux__
+    char executablePath[PATH_MAX]{};
+    if (readlink("/proc/self/exe", executablePath, PATH_MAX - 1))
+    {
+        char *lastSlash = strrchr(executablePath, '/');
+        if (lastSlash != nullptr)
+        {
+            std::string runtimeDirectory(executablePath, lastSlash + 1);
+
+            std::string lua_path = runtimeDirectory + "lua/?.lua;" + runtimeDirectory + "lua/?/init.lua";
+            setenv("LUA_PATH", lua_path.c_str(), 0);
+
+            std::string lua_cpath = runtimeDirectory + "?.so";
+            setenv("LUA_CPATH", lua_cpath.c_str(), 0);
+        }
+    }
+#endif
 
     // Call into the DLL
     int dwStatus = RunLuaFile((int)dwNumParams, ppParamList.get());
