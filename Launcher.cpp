@@ -444,9 +444,34 @@ int main(int argc, char** argv)
         dllName += L".dll";
     }
 #elif __linux__
+    char executablePath[PATH_MAX]{};
+    std::string runtimeDirectory;
+    if (readlink("/proc/self/exe", executablePath, PATH_MAX - 1))
+    {
+        char *lastSlash = strrchr(executablePath, '/');
+        if (lastSlash != nullptr)
+        {
+            runtimeDirectory = std::string(executablePath, lastSlash + 1);
+
+            std::string lua_path = runtimeDirectory + "lua/?.lua;" + runtimeDirectory + "lua/?/init.lua";
+            setenv("LUA_PATH", lua_path.c_str(), 0);
+
+            std::string lua_cpath = runtimeDirectory + "?.so";
+            setenv("LUA_CPATH", lua_cpath.c_str(), 0);
+        }
+    }
+
     if (wcsstr(dllName.c_str(), L".so") == nullptr)
     {
-        dllName = L"./lib" + dllName + L".so";
+        if (runtimeDirectory.length())
+        {
+            std::wstring runtimeDirectoryW(runtimeDirectory.begin(), runtimeDirectory.end());
+            dllName = runtimeDirectoryW + dllName + L".so";
+        }
+        else
+        {
+            dllName = L"./" + dllName + L".so";
+        }
     }
 #endif
 
@@ -526,24 +551,6 @@ int main(int argc, char** argv)
         memcpy(pCurParamBufLoc, param.c_str(), param.size() + 1);
         pCurParamBufLoc += param.size() + 1;
     }
-
-#if __linux__
-    char executablePath[PATH_MAX]{};
-    if (readlink("/proc/self/exe", executablePath, PATH_MAX - 1))
-    {
-        char *lastSlash = strrchr(executablePath, '/');
-        if (lastSlash != nullptr)
-        {
-            std::string runtimeDirectory(executablePath, lastSlash + 1);
-
-            std::string lua_path = runtimeDirectory + "lua/?.lua;" + runtimeDirectory + "lua/?/init.lua";
-            setenv("LUA_PATH", lua_path.c_str(), 0);
-
-            std::string lua_cpath = runtimeDirectory + "?.so";
-            setenv("LUA_CPATH", lua_cpath.c_str(), 0);
-        }
-    }
-#endif
 
     // Call into the DLL
     int dwStatus = RunLuaFile((int)dwNumParams, ppParamList.get());
